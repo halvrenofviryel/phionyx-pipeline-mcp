@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phionyx-pipeline-mcp"
+version = "0.1.0-dev"
+description = "Phionyx self-governance gate for Claude Code — three-layer verification (LLM declaration → git diff truth → physics gate) over the agent's own 'fixed / tested / changed' claims."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "AGPL-3.0-or-later"}
+authors = [{name = "Ali Toygar Abak", email = "founder@phionyx.ai"}]
+keywords = [
+    "mcp",
+    "model-context-protocol",
+    "claude-code",
+    "ai-governance",
+    "agent-self-report",
+    "phionyx",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+    "mcp>=1.27.0",
+    "phionyx-core>=0.3.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.6",
+    "mypy>=1.10",
+]
+mcp-server-integration = [
+    "phionyx-mcp-server>=0.1.0",
+]
+
+[project.scripts]
+phionyx-pipeline-mcp = "phionyx_pipeline_mcp.__main__:main"
+phionyx-pipeline-check-gate = "phionyx_pipeline_mcp.check_gate:main"
+
+[project.urls]
+Homepage = "https://phionyx.ai"
+Repository = "https://github.com/halvrenofviryel/phionyx-pipeline-mcp"
+"Companion package" = "https://github.com/halvrenofviryel/phionyx-mcp-server"
+"Bug Tracker" = "https://github.com/halvrenofviryel/phionyx-pipeline-mcp/issues"
+"Project Hub" = "https://github.com/halvrenofviryel/phionyx-research"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
