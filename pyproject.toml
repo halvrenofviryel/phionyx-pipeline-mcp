@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phionyx-pipeline-mcp"
-version = "0.1.0-dev"
+version = "0.1.0"
 description = "Phionyx self-governance gate for Claude Code — three-layer verification (LLM declaration → git diff truth → physics gate) over the agent's own 'fixed / tested / changed' claims."
 readme = "README.md"
 requires-python = ">=3.10"
