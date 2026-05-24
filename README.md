@@ -16,6 +16,10 @@ Layer 1: LLM declaration   →   Layer 2: Repo truth          →   Layer 3: Phy
 
 The gate is deterministic. Layer 1 (the agent's input) is stochastic. Layer 2 — verifying the agent's path declarations against the actual `git diff` — is what narrows the gap.
 
+## Where this fits on phionyx.ai
+
+This package surfaces under [**phionyx.ai/bounded-authority**](https://phionyx.ai/bounded-authority) — the safety-first AI providers entry. It is the inward-facing self-claim gate that verifies the agent's own "I fixed / I tested / this code path changed" narration against the repository's actual diff and a deterministic physics gate, producing a `pass | regenerate | reject` directive paired with reviewer-runnable evidence.
+
 ## Companion package: phionyx-mcp-server
 
 This package is the **inward-facing** layer: it gates what the agent says about its own work.
@@ -125,6 +129,10 @@ AGPL-3.0-or-later. See [`LICENSE`](LICENSE).
 
 ## See also
 
+- [phionyx.ai/bounded-authority](https://phionyx.ai/bounded-authority) — entry pillar this package surfaces under
+- [phionyx.ai/evidence](https://phionyx.ai/evidence) — Evidence Matrix: every load-bearing claim paired with a reviewer-runnable command
 - Project hub: [github.com/halvrenofviryel/phionyx-research](https://github.com/halvrenofviryel/phionyx-research)
-- Outward layer (MCP trust boundary): [halvrenofviryel/phionyx-mcp-server](https://github.com/halvrenofviryel/phionyx-mcp-server)
+- Outward MCP layer: [`phionyx-mcp-server`](https://github.com/halvrenofviryel/phionyx-mcp-server) — trust boundary over third-party MCP tool calls
+- Inspect AI bridge: [`phionyx-eval-inspect`](https://github.com/halvrenofviryel/phionyx-eval-inspect) — envelope chain → `.eval` log
+- Framework adapters (v0.5.0+, alpha): [`phionyx-langchain-langgraph`](https://github.com/halvrenofviryel/phionyx_langchain_langgraph) · [`phionyx-openai-agents`](https://github.com/halvrenofviryel/phionyx_openai_agents)
 - Phionyx Core SDK (PyPI): [`phionyx-core`](https://pypi.org/project/phionyx-core/)
