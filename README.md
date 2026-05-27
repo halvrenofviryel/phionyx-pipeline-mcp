@@ -134,5 +134,5 @@ AGPL-3.0-or-later. See [`LICENSE`](LICENSE).
 - Project hub: [github.com/halvrenofviryel/phionyx-research](https://github.com/halvrenofviryel/phionyx-research)
 - Outward MCP layer: [`phionyx-mcp-server`](https://github.com/halvrenofviryel/phionyx-mcp-server) — trust boundary over third-party MCP tool calls
 - Inspect AI bridge: [`phionyx-eval-inspect`](https://github.com/halvrenofviryel/phionyx-eval-inspect) — envelope chain → `.eval` log
-- Framework adapters (v0.5.0+, alpha): [`phionyx-langchain-langgraph`](https://github.com/halvrenofviryel/phionyx_langchain_langgraph) · [`phionyx-openai-agents`](https://github.com/halvrenofviryel/phionyx_openai_agents)
+- Framework adapters (v0.5.0+, alpha): [`phionyx-langchain-langgraph`](https://github.com/halvrenofviryel/phionyx-langchain-langgraph) · [`phionyx-openai-agents`](https://github.com/halvrenofviryel/phionyx-openai-agents)
 - Phionyx Core SDK (PyPI): [`phionyx-core`](https://pypi.org/project/phionyx-core/)
