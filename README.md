@@ -70,6 +70,45 @@ Both servers will share `~/.phionyx/active_trace` by default.
 | `phionyx_checkpoint` | Lightweight physics snapshot — call frequently to keep the session telemetry dense. |
 | `phionyx_session_report` | End-of-session summary: claims, directives, drift metrics, evidence taxonomy, and (if the server MCP is installed) the audit chain head + validity. |
 
+## Reviewer-runnable CLI (`phionyx`)
+
+`pip install phionyx-pipeline-mcp` also installs a `phionyx` command that exposes the same three-layer verification as the MCP server, but reachable from a plain terminal — no Claude Code / MCP host required.
+
+Four subcommands:
+
+```bash
+# 1. Verify a self-claim against the gate
+phionyx verify-claim \
+    --claim "scenario continuation bug is fixed" \
+    --evidence "12 scenes played, quest_complete=True" \
+    --type integration_test \
+    --tested "src/foo/regression.py::regression_handler" \
+    --affected "src/foo/regression.py"
+
+# 2. Aggregate the audit chain over the last N days
+phionyx audit --days 30
+phionyx audit --days 7 --json   # machine-readable
+
+# 3. Replay a specific session's timeline by trace_id (or unique prefix)
+phionyx replay --trace <trace_id_or_session_id_prefix>
+
+# 4. The killer demo — reviewer reproduces the failure mode in 5 seconds
+phionyx demo broken-test-disabled
+```
+
+The demo is the entry point a reviewer should try first. It runs a scripted scenario in which Claude *claims* a fix passes and the gate detects that no tested-path coverage exists and the evidence weight is the bottom of the taxonomy — and rejects the claim. The exit code is `2` because the gate did its job.
+
+Exit codes:
+
+| Code | Meaning |
+|---|---|
+| `0` | `pass` / `proceed` — gate accepts the claim |
+| `1` | `regenerate` / `rewrite` / `hedge` — claim must be revised |
+| `2` | `reject` — gate rejects outright |
+| `3` | error (invalid args, missing telemetry, internal failure) |
+
+CLI and MCP-host invocations write to the same telemetry directory (`PHIONYX_PROJECT_ROOT/data/mcp_telemetry/`), so `phionyx audit` and `phionyx replay` see prior sessions started inside Claude Code or any other MCP-capable host.
+
 ## Evidence taxonomy
 
 Not all evidence is equal. The gate weights confidence by the type of test that backs a claim:

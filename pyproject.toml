@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phionyx-pipeline-mcp"
-version = "0.1.0"
-description = "Phionyx self-governance gate for Claude Code — three-layer verification (LLM declaration → git diff truth → physics gate) over the agent's own 'fixed / tested / changed' claims."
+version = "0.2.0"
+description = "Phionyx self-governance gate for Claude Code — three-layer verification (LLM declaration → git diff truth → physics gate) over the agent's own 'fixed / tested / changed' claims. v0.2.0 adds reviewer-runnable CLI (verify-claim, audit, replay, demo)."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "AGPL-3.0-or-later"}
@@ -53,6 +53,8 @@ mcp-server-integration = [
 [project.scripts]
 phionyx-pipeline-mcp = "phionyx_pipeline_mcp.__main__:main"
 phionyx-pipeline-check-gate = "phionyx_pipeline_mcp.check_gate:main"
+# Reviewer-runnable CLI (Plan v3 §13 Faz 4 P1)
+phionyx = "phionyx_pipeline_mcp.cli:main"
 
 [project.urls]
 Homepage = "https://phionyx.ai"
