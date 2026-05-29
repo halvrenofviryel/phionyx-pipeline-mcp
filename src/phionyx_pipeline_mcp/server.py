@@ -50,6 +50,7 @@ from phionyx_core.meta.knowledge_boundary import (
     BoundaryAssessment,
 )
 from phionyx_core.meta.self_model_drift import SelfModelDrift, DriftReport
+from phionyx_core.meta.deception_detector import compute_dds  # P2 — continuity binding DDS
 from phionyx_core.pipeline.blocks.response_revision_gate import (
     ResponseRevisionGateBlock,
     RevisionDirective,
@@ -72,6 +73,73 @@ EVIDENCE_WEIGHTS: Dict[str, float] = {
     "code_review": 0.3,
     "none": 0.0,
 }
+
+# ── P1: require_tool directive (CG-L3; L2→L3) ──────────────────────────────────
+# A factual / external-state claim with NO same-turn externally-bound evidence must not
+# `pass` — the runtime is not ground truth, so it returns `require_tool`: bind the
+# evidence (run the tool) first. Enforcement is opt-in
+# (PHIONYX_GATE_REQUIRE_TOOL_ENFORCE=1, default off → assessment surfaced, directive
+# unchanged) — a staged, non-regressive rollout. The claim-type classifier is a
+# conservative SEED (regex over the external-state-claim domain).
+
+# Evidence types that actually bind a claim to the world (ran/inspected something).
+# code_review / none are self-inspection, NOT external verification.
+_EXTERNAL_EVIDENCE_TYPES = {
+    "browser_test", "manual_repro", "integration_test",
+    "endpoint_test", "log_inspection", "unit_test",
+}
+
+# Action types that assert a factual/world state (vs investigate/ask).
+_FACTUAL_ACTION_TYPES = {"claim_fixed", "claim_working", "deploy"}
+
+_EXTERNAL_STATE_CLAIM_RE = re.compile(
+    r"\b(is\s+(live|public|deployed|published|merged|up|running|passing)|"
+    r"are\s+(live|public|passing|up)|"
+    r"(deployed|published|merged|released|shipped)\s+(to|on)|"
+    r"version\s+\d|v\d+\.\d+|"
+    r"on\s+(pypi|npm|production|prod|the\s+site|github)|"
+    r"(tests?|ci|build|pipeline)\s+(pass|passed|passing|green|succeed|succeeded)|"
+    r"(http\s*)?2\s?0\s?0\b|returns?\s*200|"
+    r"(cited|indexed|accepted|approved|endorsed)\b)",
+    re.IGNORECASE,
+)
+
+
+def _is_external_state_claim(text: str) -> bool:
+    """SEED classifier: does the claim assert an external/world state?"""
+    return bool(text) and bool(_EXTERNAL_STATE_CLAIM_RE.search(text))
+
+
+def _evidence_externally_bound(evidence_type: str, has_evidence: bool) -> bool:
+    """True only when the bound evidence is an external-verification type AND present."""
+    return has_evidence and evidence_type in _EXTERNAL_EVIDENCE_TYPES
+
+
+def _require_tool_assessment(
+    is_factual: bool, evidence_bound: bool, directive: str,
+) -> tuple[str, dict[str, Any], str | None]:
+    """Compute the require_tool assessment + (possibly enforced) directive.
+
+    Returns (final_directive, assessment_dict, gap_or_None). Non-regressive: directive
+    only changes when PHIONYX_GATE_REQUIRE_TOOL_ENFORCE=1 AND it would otherwise pass.
+    """
+    triggered = is_factual and not evidence_bound
+    assessment = {
+        "triggered": triggered,
+        "is_factual_or_external_state_claim": is_factual,
+        "evidence_externally_bound": evidence_bound,
+        "enforced": False,
+        "source": "P1 seed classifier",
+    }
+    gap = None
+    if triggered:
+        gap = ("require_tool: factual/external-state claim has no externally-bound evidence "
+               "(file read / test run / gh / curl / CI) — bind a tool before this claim can pass")
+        if (os.environ.get("PHIONYX_GATE_REQUIRE_TOOL_ENFORCE") == "1"
+                and directive in ("pass", "proceed", "solid")):
+            directive = "require_tool"
+            assessment["enforced"] = True
+    return directive, assessment, gap
 
 
 # ── Action-Type Threshold Profiles ───────────────────────────────
@@ -662,6 +730,8 @@ def _verify_claim_impl(
     evidence_type: str,
     code_paths_tested: str,
     code_paths_affected: str,
+    referenced_sources: str = "",
+    read_paths: str | None = None,
 ) -> dict[str, Any]:
     """
     Three-layer claim verification with 9-block pipeline:
@@ -768,7 +838,14 @@ def _verify_claim_impl(
         drift_score=drift.current_drift,
         action_type="claim_fixed",
     )
-    _track_directive(revision.directive)
+
+    # P1 require_tool — the claim text is available here, so classify it directly.
+    final_directive, require_tool, _rt_gap = _require_tool_assessment(
+        is_factual=_is_external_state_claim(claim),
+        evidence_bound=_evidence_externally_bound(evidence_type, has_evidence),
+        directive=revision.directive,
+    )
+    _track_directive(final_directive)
 
     # Gap analysis
     untested = sorted(set(affected) - set(tested))
@@ -787,6 +864,8 @@ def _verify_claim_impl(
         gaps.append(f"Phi collapsed below floor ({phi_result['phi']:.4f} < 0.05)")
     if not trust["is_trusted"]:
         gaps.append(f"Trust below threshold: {trust['reasoning']}")
+    if _rt_gap:
+        gaps.append(_rt_gap)
 
     # Block 44: Audit integrity
     audit = _audit_integrity(
@@ -802,7 +881,7 @@ def _verify_claim_impl(
     _claim_history.append({
         "claim": claim,
         "claim_hash": claim_hash,
-        "directive": revision.directive,
+        "directive": final_directive,
         "coverage": round(effective_coverage, 2),
         "phi": phi_result["phi"],
         "entropy": _state.H,
@@ -815,9 +894,55 @@ def _verify_claim_impl(
         "timestamp": time.time(),
     })
 
+    # P2b — Continuity Binding Gate: per-constraint satisfaction over the claim's action
+    # context (which binding constraints it references vs what was actually applied/read this
+    # turn). A clear violation — a read/binding constraint cited but not applied = the
+    # read_but_not_bound failure class — drives compute_dds to flag, and under
+    # PHIONYX_GATE_CONTINUITY_ENFORCE=1 downgrades an otherwise-passing claim to 'regenerate'.
+    # Non-regressive: the read-binding check is only evaluable when read_paths is provided
+    # (a real turn without a wired read-set leaves it unevaluable → ignored).
+    continuity: dict[str, Any]
+    try:
+        from phionyx_pipeline_mcp import constraint_ledger as _cl
+        _repo = Path(os.environ.get("PHIONYX_PROJECT_ROOT") or os.getcwd()).resolve()
+        _memdir = Path.home() / ".claude" / "projects" / str(_repo).replace("/", "-") / "memory"
+        continuity = _cl.ledger_freshness(_repo, _memdir if _memdir.is_dir() else None)
+        _ctx: dict[str, Any] = {"claim_text": claim}
+        if referenced_sources:
+            _ctx["referenced_sources"] = [s.strip() for s in referenced_sources.split(",") if s.strip()]
+        if read_paths is not None:
+            _ctx["read_paths"] = [s.strip() for s in read_paths.split(",") if s.strip()]
+        _sat = _cl.assess_constraint_satisfaction(_cl.load_ledger(), _ctx)
+        continuity["per_constraint"] = _sat
+        _cont_score = _sat["external_eval"] if _sat["evaluated"] else (
+            1.0 if (continuity["bound"] and not continuity["stale"]) else 0.2)
+        _dds = compute_dds(self_eval=fusion["w_final"], external_eval=max(_cont_score, 0.01))
+        continuity["dds"] = {
+            "dds": round(_dds.dds, 4), "is_suspicious": _dds.is_suspicious,
+            "recommendation": _dds.recommendation,
+            "source": "phionyx_core.meta.deception_detector.compute_dds",
+        }
+        continuity["enforced"] = False
+        # A read_but_not_bound violation warrants 'regenerate' (re-ground + re-do). Escalate
+        # from ANY weaker-or-equal directive (pass/proceed/hedge/damp/rewrite) — not just pass —
+        # so a violation that co-occurs with a rewrite/damp is still acted on. Leave
+        # already-stronger directives (regenerate/reject/block/require_tool).
+        if (os.environ.get("PHIONYX_GATE_CONTINUITY_ENFORCE") == "1"
+                and _sat["n_violated"] > 0
+                and final_directive in ("pass", "proceed", "hedge", "damp", "rewrite")):
+            final_directive = "regenerate"
+            continuity["enforced"] = True
+            continuity["reason"] = (
+                f"read-but-not-bound: {_sat['n_violated']} binding constraint(s) referenced "
+                f"but not applied this turn — re-ground + re-do")
+    except Exception as _e:  # noqa: BLE001 — continuity must never break the gate
+        continuity = {"error": type(_e).__name__, "source": "continuity_soft_fail"}
+
     return {
-        "directive": revision.directive,
+        "directive": final_directive,
         "revision_reasons": revision.reasons,
+        "require_tool": require_tool,
+        "continuity_binding": continuity,
         "damp_factor": revision.damp_factor,
         "coverage": round(effective_coverage, 2),
         "declared_coverage": round(declared_coverage, 2),
@@ -943,8 +1068,76 @@ def _response_gate_impl(
     evidence_count: int,
     evidence_type: str,
     affects_user_facing: bool,
+    artifact_references: str = "",
+    artifact_paths_read: str = "",
 ) -> dict[str, Any]:
-    """Response revision gate with 9-block pipeline. Blocks 3, 16, 23, 37, 38, 39, 41, 44."""
+    """Response revision gate with 9-block pipeline. Blocks 3, 16, 23, 37, 38, 39, 41, 44.
+
+    For action_type in {'ask_question', 'make_claim'}: Block 15
+    (knowledge_boundary_check) short-circuit — each referenced source is scored by
+    phionyx_core's KnowledgeBoundaryDetector; any source assessed outside the
+    read-knowledge boundary returns directive='regenerate' with the ungrounded set +
+    the core's reasoning surfaced. The rule lives in the core module, not in
+    hand-coded set subtraction.
+    """
+    # Block 15 short-circuit — claim/question grounding check.
+    # Realized THROUGH phionyx_core.meta.knowledge_boundary (KnowledgeBoundaryDetector),
+    # NOT hand-coded `unread = refs - read` set subtraction. The core module decides
+    # within/without boundary per source. Covers:
+    #   action_type='ask_question' — question about a named artifact, and
+    #   action_type='make_claim'   — assertion attributing content to a source.
+    if action_type in ("ask_question", "make_claim"):
+        refs = {r.strip() for r in artifact_references.split(",") if r.strip()}
+        read = {r.strip() for r in artifact_paths_read.split(",") if r.strip()}
+
+        # Single decision path — delegate to the shared core-calling adapter.
+        # assess_sources realizes the verdict THROUGH KnowledgeBoundaryDetector;
+        # the gate does not re-derive it.
+        from phionyx_pipeline_mcp import grounding_core
+        _verdict = grounding_core.assess_sources(refs, read)
+        ungrounded = _verdict["ungrounded"]
+        boundary_reasons = _verdict["reasons"]
+
+        if ungrounded:
+            _state.H = 0.95
+            _state.V = -0.6
+            _state.A = 0.7
+            dt = _compute_dt()
+            phi_result = _compute_phi(dt)
+            chain = _read_envelope_chain()
+            _track_directive("regenerate")
+            noun = "Question" if action_type == "ask_question" else "Claim"
+            return {
+                "directive": "regenerate",
+                "revision_reasons": [
+                    f"{noun} references sources outside read-knowledge: {ungrounded}",
+                    *boundary_reasons,
+                    "Read/open each source this turn before asserting or asking about it",
+                ],
+                "damp_factor": 0.3,
+                "entropy_floor": 0.0,
+                "evidence_type": "none",
+                "evidence_weight": 0.0,
+                "drift_severity": "high",
+                "confidence_fusion": {"w_final": 0.0, "recommendation": "block"},
+                "trust_evaluation": {"direct_trust": 0.0, "is_trusted": False},
+                "audit": {
+                    "integrity_score": 0.0,
+                    "status": "critical",
+                    "issues": ["claim_references_sources_outside_read_knowledge"],
+                },
+                "physics": _physics_snapshot(phi_result),
+                "trace_id": chain["trace_id"],
+                "mcp_envelope_chain_head": chain["head_hash"],
+                "knowledge_boundary": {
+                    "source": "phionyx_core.meta.knowledge_boundary.KnowledgeBoundaryDetector",
+                    "ungrounded_sources": ungrounded,
+                },
+                "unread_artifacts": ungrounded,
+                "read_artifacts": sorted(read),
+            }
+        # else: fall through and grant pass via the normal pipeline below
+
     ev_weight = EVIDENCE_WEIGHTS.get(evidence_type, 0.3)
     evidence_factor = min(1.0, evidence_count * ev_weight)
 
@@ -990,7 +1183,6 @@ def _response_gate_impl(
         drift_score=drift.current_drift,
         action_type=action_type,
     )
-    _track_directive(revision.directive)
 
     # Block 44: Audit integrity
     gaps = revision.reasons if revision.directive != "pass" else []
@@ -1002,10 +1194,56 @@ def _response_gate_impl(
         gaps=gaps,
     )
 
+    final_directive = revision.directive
+    final_reasons = list(revision.reasons)
+
+    # P1 require_tool — no claim text here, so use action_type as the factual signal:
+    # a doneness/deploy claim with no externally-bound evidence must bind a tool first.
+    final_directive, require_tool, _rt_gap = _require_tool_assessment(
+        is_factual=action_type in _FACTUAL_ACTION_TYPES,
+        evidence_bound=_evidence_externally_bound(evidence_type, evidence_count > 0),
+        directive=final_directive,
+    )
+    if _rt_gap:
+        final_reasons.append(_rt_gap)
+
+    # P2 — Continuity Binding Gate (v0): is the session's constraint binding still fresh?
+    # compute_dds(declared confidence, continuity_score) flags "confident while the
+    # binding is unbound/stale" (the source changed since session start, or B1 never ran).
+    # Non-regressive: surfaced always; directive downgraded to 'hedge' only with
+    # PHIONYX_GATE_CONTINUITY_ENFORCE=1 and only if it would otherwise pass.
+    continuity: dict[str, Any]
+    try:
+        from phionyx_pipeline_mcp import constraint_ledger as _cl
+        _repo = Path(os.environ.get("PHIONYX_PROJECT_ROOT") or os.getcwd()).resolve()
+        _memdir = Path.home() / ".claude" / "projects" / str(_repo).replace("/", "-") / "memory"
+        continuity = _cl.ledger_freshness(_repo, _memdir if _memdir.is_dir() else None)
+        _cont_score = 1.0 if (continuity["bound"] and not continuity["stale"]) else 0.2
+        _dds = compute_dds(self_eval=confidence, external_eval=max(_cont_score, 0.01))
+        continuity["dds"] = {
+            "dds": round(_dds.dds, 4), "is_suspicious": _dds.is_suspicious,
+            "recommendation": _dds.recommendation,
+            "source": "phionyx_core.meta.deception_detector.compute_dds",
+        }
+        continuity["enforced"] = False
+        if (os.environ.get("PHIONYX_GATE_CONTINUITY_ENFORCE") == "1"
+                and _dds.is_suspicious and final_directive in ("pass", "proceed")):
+            final_directive = "hedge"
+            final_reasons.append(
+                f"continuity: binding {'stale' if continuity['stale'] else 'unbound'} "
+                f"while confidence high (DDS={_dds.dds:.2f}) — re-bind session constraints")
+            continuity["enforced"] = True
+    except Exception as _e:  # noqa: BLE001 — continuity must never break the gate
+        continuity = {"error": type(_e).__name__, "source": "continuity_soft_fail"}
+
+    _track_directive(final_directive)
+
     chain = _read_envelope_chain()
     return {
-        "directive": revision.directive,
-        "revision_reasons": revision.reasons,
+        "directive": final_directive,
+        "revision_reasons": final_reasons,
+        "require_tool": require_tool,
+        "continuity_binding": continuity,
         "damp_factor": revision.damp_factor,
         "entropy_floor": revision.entropy_floor,
         "evidence_type": evidence_type,
@@ -1134,12 +1372,20 @@ def main() -> None:
         evidence_type: str,
         code_paths_tested: str,
         code_paths_affected: str,
+        referenced_sources: str = "",
+        read_paths: str | None = None,
     ) -> dict[str, Any]:
         """Verify a completion claim using three-layer verification. Call BEFORE saying 'fixed' or 'done'.
 
         Layer 1: Parse your declarations (claim, evidence, paths)
         Layer 2: Cross-check paths against git diff (input verification)
         Layer 3: Physics gate (phi + entropy + revision thresholds)
+
+        P1 require_tool: if the claim asserts a factual / external-state fact (live /
+        deployed / version / merged / tests-pass / endpoint-up) and the evidence is not
+        externally bound (only code_review/none, not a run/inspection), the result carries
+        require_tool{triggered,...}; with PHIONYX_GATE_REQUIRE_TOOL_ENFORCE=1 an otherwise-
+        passing directive becomes 'require_tool' — go bind the evidence (run the tool) first.
 
         Args:
             claim: What you're claiming (e.g. "scenario continuation bug is fixed")
@@ -1149,8 +1395,17 @@ def main() -> None:
                           endpoint_test, log_inspection, unit_test, code_review, none
             code_paths_tested: Comma-separated functions/endpoints you actually tested
             code_paths_affected: Comma-separated functions/endpoints affected by the change
+            referenced_sources: (P2b) Comma-separated sources the claim cites/depends on
+                          (roadmap, spec, a module/file). Optional.
+            read_paths: (P2b) Comma-separated sources actually Read/bound THIS turn. Optional —
+                          when BOTH this and referenced_sources are given, the gate checks
+                          read_but_not_bound (a cited source not bound this turn → continuity
+                          violation; with PHIONYX_GATE_CONTINUITY_ENFORCE=1 → 'regenerate').
+                          Omit (leave null) when no read-set is available → check is skipped
+                          (non-regressive).
         """
-        result = _verify_claim_impl(claim, evidence, evidence_type, code_paths_tested, code_paths_affected)
+        result = _verify_claim_impl(claim, evidence, evidence_type, code_paths_tested,
+                                    code_paths_affected, referenced_sources, read_paths)
         _persist_state("phionyx_verify_claim", result)
         return result
 
@@ -1195,22 +1450,54 @@ def main() -> None:
         evidence_count: int,
         evidence_type: str = "code_review",
         affects_user_facing: bool = False,
+        artifact_references: str = "",
+        artifact_paths_read: str = "",
     ) -> dict[str, Any]:
         """Response revision gate with action-type-specific thresholds. Call before committing.
 
+        Directives: pass | hedge | regenerate | block | require_tool (P1).
         Different action types trigger different threshold profiles:
         - claim_fixed: strictest (entropy_reject=0.90, phi_min=0.08)
         - deploy: very strict (entropy_reject=0.85, phi_min=0.10)
         - default: standard pipeline thresholds
+        - require_tool (P1): for factual action_types (claim_fixed/claim_working/deploy)
+          with no externally-bound evidence, the result carries require_tool{triggered};
+          with PHIONYX_GATE_REQUIRE_TOOL_ENFORCE=1 an otherwise-passing directive becomes
+          'require_tool' — bind real evidence (run a tool) before the claim can pass.
+        - continuity_binding (P2): the result carries continuity_binding{bound,stale,dds}
+          from the session constraint ledger. compute_dds(confidence, continuity_score)
+          flags "confident while binding unbound/stale"; with PHIONYX_GATE_CONTINUITY_ENFORCE=1
+          an otherwise-passing directive is downgraded to 'hedge' (re-bind constraints).
+        - ask_question / make_claim (Block 15 short-circuit): each identifier in
+          `artifact_references` is scored against the read-knowledge boundary by
+          phionyx_core's KnowledgeBoundaryDetector; any source not present in
+          `artifact_paths_read` is assessed outside the boundary → directive='regenerate'
+          with the ungrounded set + the core's reasoning surfaced. Use 'ask_question'
+          BEFORE asking about a named artifact; use 'make_claim' BEFORE asserting what a
+          named source (file, paper, theory, config) says/contains.
 
         Args:
-            action_type: claim_fixed | claim_working | deploy | refactor | investigate
+            action_type: claim_fixed | claim_working | deploy | refactor | investigate | ask_question | make_claim
             confidence: Your confidence 0.0-1.0
             evidence_count: Number of independent test/verification points
             evidence_type: Type of evidence (see phionyx_verify_claim for options)
             affects_user_facing: Whether this change is visible to end users
+            artifact_references: Comma-separated artifact identifiers mentioned in the
+                question/claim (file paths, URLs, issue numbers, named sources). Only
+                meaningful when action_type in {'ask_question', 'make_claim'}.
+            artifact_paths_read: Comma-separated artifact identifiers actually opened this
+                turn (Read tool results, gh issue view output, WebFetch URLs). Only
+                meaningful when action_type in {'ask_question', 'make_claim'}.
         """
-        result = _response_gate_impl(action_type, confidence, evidence_count, evidence_type, affects_user_facing)
+        result = _response_gate_impl(
+            action_type,
+            confidence,
+            evidence_count,
+            evidence_type,
+            affects_user_facing,
+            artifact_references,
+            artifact_paths_read,
+        )
         _persist_state("phionyx_response_gate", result)
         return result
 
