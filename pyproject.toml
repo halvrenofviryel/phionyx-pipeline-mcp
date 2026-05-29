@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phionyx-pipeline-mcp"
-version = "0.2.0"
-description = "Phionyx self-governance gate for Claude Code — three-layer verification (LLM declaration → git diff truth → physics gate) over the agent's own 'fixed / tested / changed' claims. v0.2.0 adds reviewer-runnable CLI (verify-claim, audit, replay, demo)."
+version = "0.3.0a1"
+description = "Phionyx self-governance gate for Claude Code — three-layer verification (LLM declaration → git diff truth → physics gate) over the agent's own 'fixed / tested / changed' claims. v0.3.0a1 (alpha) adds opt-in CG-L3 governance: the require_tool directive (factual claim without same-turn evidence must bind a tool first) and continuity binding (catches 'read-but-not-bound'). Both default-OFF / non-regressive; detector calibration not yet validated."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "AGPL-3.0-or-later"}
