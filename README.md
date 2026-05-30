@@ -1,30 +1,42 @@
 # phionyx-pipeline-mcp
 
-> A self-governance MCP server for Claude Code — gates the agent's own *"I fixed this / I tested that / this code path changed"* declarations against `git diff` truth and a deterministic physics gate.
+> A self-governance MCP server for Claude Code — gates the agent's own *"I fixed this / I tested that / this code path changed"* declarations against `git diff` truth and a deterministic gate.
 
 `phionyx-pipeline-mcp` solves a less-discussed agent-trust problem: when an AI coding agent reports back on its own work, that report is itself a trust object. Without verification, you accept it on faith.
 
 This package gives any MCP-capable host (Claude Desktop, Cursor, Zed, VS Code, JetBrains) a six-tool surface that turns those self-reports into reviewable evidence — coverage of paths claimed vs. paths actually touched, severity-weighted evidence taxonomy, drift tracking across a session, and an explicit `pass | regenerate | reject` directive before the agent claims "done."
 
-## How it works — three-layer verification
+## Where this sits in the Phionyx stack
+
+Phionyx ships three distinct things, each with its own version line. This package is **the gate**:
+
+- **Engine** — `phionyx-core` (latest **v0.7.2**): the deterministic-cognition runtime (46-block canonical pipeline, state vector, kill switch, HITL, ethics/safety gates, signed audit chain). It is the reference implementation that scores **L3 + D3** on the Evaluation Standard. It is *not* claim-governance-rated.
+- **Gate** — `phionyx-pipeline-mcp` (**this package**): the inward-facing self-claim gate described here. It is the component the **Claim-Governance ladder (CG-L0…CG-L5)** rates. Stable **v0.2.0 = CG-L2** (claim-grounded); alpha **v0.3.0a1 = CG-L3** (evidence-bound; opt-in / default-off; already on PyPI), with the stable channel remaining CG-L2. The gate is the claim-governance layer of the 5-layer governance stack; `phionyx-mcp-server` (v0.1.0) is the outward MCP trust boundary.
+- **Standard** — `phionyx-evaluation-standard` (released **v0.1.1 / v0.2.0**; CG-L0…CG-L5 is its **v0.3 draft** layer): the vendor-neutral spec that defines the L0-L3 (evaluation maturity), D0-D3 (determinism) and CG-L0…CG-L5 (claim-governance) scales. The CG ladder rates **this gate**, not the engine. See [`phionyx-evaluation-standard`](https://github.com/halvrenofviryel/phionyx-evaluation-standard).
+
+These three version namespaces — engine v0.7.2, gate v0.2.0 / v0.3.0a1, Standard v0.1.1 / v0.2.0 / v0.3-draft — are never cross-attributed.
+
+## How it works — three-stage verification
 
 ```
-Layer 1: LLM declaration   →   Layer 2: Repo truth          →   Layer 3: Physics gate
+Stage 1: LLM declaration   →   Stage 2: Repo truth          →   Stage 3: Deterministic gate
   "I fixed X, tested Y,         git diff parsed; functions       phi + entropy + revision
    affected paths a,b,c"        extracted; cross-checked         thresholds → directive
 ```
 
-The gate is deterministic. Layer 1 (the agent's input) is stochastic. Layer 2 — verifying the agent's path declarations against the actual `git diff` — is what narrows the gap.
+The gate is deterministic. Stage 1 (the agent's input) is stochastic. Stage 2 — verifying the agent's path declarations against the actual `git diff` — is what narrows the gap.
+
+(These three stages are internal to the gate's verification flow. They are unrelated to the governance-stack layers and to the L0-L3 / D0-D3 / CG-L0…CG-L5 scales of the Evaluation Standard.)
 
 ## Where this fits on phionyx.ai
 
-This package surfaces under [**phionyx.ai/bounded-authority**](https://phionyx.ai/bounded-authority) — the safety-first AI providers entry. It is the inward-facing self-claim gate that verifies the agent's own "I fixed / I tested / this code path changed" narration against the repository's actual diff and a deterministic physics gate, producing a `pass | regenerate | reject` directive paired with reviewer-runnable evidence.
+This package surfaces under [**phionyx.ai/bounded-authority**](https://phionyx.ai/bounded-authority) — the safety-first AI providers entry. It is the inward-facing self-claim gate that verifies the agent's own "I fixed / I tested / this code path changed" narration against the repository's actual diff and a deterministic gate, producing a `pass | regenerate | reject` directive paired with reviewer-runnable evidence.
 
 ## Companion package: phionyx-mcp-server
 
 This package is the **inward-facing** layer: it gates what the agent says about its own work.
 
-A companion package, [`phionyx-mcp-server`](https://github.com/halvrenofviryel/phionyx-mcp-server), is the **outward-facing** layer: it sees the host calling a third-party MCP server and signs evidence of that call (descriptor hash, drift detection, audit chain).
+A companion package, [`phionyx-mcp-server`](https://github.com/halvrenofviryel/phionyx-mcp-server) (v0.1.0), is the **outward-facing** layer: it sees the host calling a third-party MCP server and signs evidence of that call (descriptor hash, drift detection, audit chain).
 
 When both packages are installed and registered with the same Claude Code host, they agree on a single `trace_id` per session via `PHIONYX_TRACE_ID` (with `~/.phionyx/active_trace` file fallback). One conversation = one trace = end-to-end view of every third-party tool call AND every agent self-claim gate decision.
 
@@ -67,12 +79,12 @@ Both servers will share `~/.phionyx/active_trace` by default.
 | `phionyx_causal_trace` | **While debugging.** Validates a causal chain from symptom to root cause. Chains shorter than 3 links or weaker than 40% code-specificity get a `deepen` directive. |
 | `phionyx_response_gate` | **Before committing or deploying.** Action-type-specific thresholds: `claim_fixed` is strictest, `deploy` is very strict, `default` is standard. |
 | `phionyx_verify_paths` | Cross-check claimed-affected and claimed-tested paths against `git diff`. Flags underreporting. |
-| `phionyx_checkpoint` | Lightweight physics snapshot — call frequently to keep the session telemetry dense. |
+| `phionyx_checkpoint` | Lightweight snapshot — call frequently to keep the session telemetry dense. |
 | `phionyx_session_report` | End-of-session summary: claims, directives, drift metrics, evidence taxonomy, and (if the server MCP is installed) the audit chain head + validity. |
 
 ## Reviewer-runnable CLI (`phionyx`)
 
-`pip install phionyx-pipeline-mcp` also installs a `phionyx` command that exposes the same three-layer verification as the MCP server, but reachable from a plain terminal — no Claude Code / MCP host required.
+`pip install phionyx-pipeline-mcp` also installs a `phionyx` command that exposes the same three-stage verification as the MCP server, but reachable from a plain terminal — no Claude Code / MCP host required.
 
 Four subcommands:
 
@@ -170,8 +182,9 @@ AGPL-3.0-or-later. See [`LICENSE`](LICENSE).
 
 - [phionyx.ai/bounded-authority](https://phionyx.ai/bounded-authority) — entry pillar this package surfaces under
 - [phionyx.ai/evidence](https://phionyx.ai/evidence) — Evidence Matrix: every load-bearing claim paired with a reviewer-runnable command
+- [`phionyx-evaluation-standard`](https://github.com/halvrenofviryel/phionyx-evaluation-standard) — the vendor-neutral spec (released v0.1.1 / v0.2.0; CG-L0…CG-L5 is its v0.3-draft layer) that defines the L0-L3, D0-D3 and CG-L0…CG-L5 scales. The CG ladder rates this gate (stable v0.2.0 = CG-L2; alpha v0.3.0a1 = CG-L3).
 - Project hub: [github.com/halvrenofviryel/phionyx-research](https://github.com/halvrenofviryel/phionyx-research)
-- Outward MCP layer: [`phionyx-mcp-server`](https://github.com/halvrenofviryel/phionyx-mcp-server) — trust boundary over third-party MCP tool calls
-- Inspect AI bridge: [`phionyx-eval-inspect`](https://github.com/halvrenofviryel/phionyx-eval-inspect) — envelope chain → `.eval` log
-- Framework adapters (v0.5.0+, alpha): [`phionyx-langchain-langgraph`](https://github.com/halvrenofviryel/phionyx-langchain-langgraph) · [`phionyx-openai-agents`](https://github.com/halvrenofviryel/phionyx-openai-agents)
-- Phionyx Core SDK (PyPI): [`phionyx-core`](https://pypi.org/project/phionyx-core/)
+- Engine (PyPI): [`phionyx-core`](https://pypi.org/project/phionyx-core/) — the deterministic runtime (v0.7.2), reference impl scoring L3 + D3 on the Standard; not claim-governance-rated
+- Outward MCP layer: [`phionyx-mcp-server`](https://github.com/halvrenofviryel/phionyx-mcp-server) (v0.1.0) — trust boundary over third-party MCP tool calls
+- Inspect AI bridge: [`phionyx-eval-inspect`](https://github.com/halvrenofviryel/phionyx-eval-inspect) (v0.1.0) — envelope chain → `.eval` log
+- Framework adapters (alpha): [`phionyx-langchain-langgraph`](https://github.com/halvrenofviryel/phionyx-langchain-langgraph) (v0.1.0a1) · [`phionyx-openai-agents`](https://github.com/halvrenofviryel/phionyx-openai-agents) (v0.1.0a1)
