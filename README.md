@@ -10,7 +10,7 @@ This package gives any MCP-capable host (Claude Desktop, Cursor, Zed, VS Code, J
 
 Phionyx ships three distinct things, each with its own version line. This package is **the gate**:
 
-- **Engine** — `phionyx-core` (latest **v0.7.2**): the deterministic-cognition runtime (46-block canonical pipeline, state vector, kill switch, HITL, ethics/safety gates, signed audit chain). It is the reference implementation that scores **L3 + D3** on the Evaluation Standard. It is *not* claim-governance-rated.
+- **Engine** — `phionyx-core` (latest **v0.7.2**): the deterministic runtime (46-block canonical pipeline, state vector, kill switch, HITL, ethics/safety gates, signed audit chain). It is the reference implementation that scores **L3 + D3** on the Evaluation Standard. It is *not* claim-governance-rated.
 - **Gate** — `phionyx-pipeline-mcp` (**this package**): the inward-facing self-claim gate described here. It is the component the **Claim-Governance ladder (CG-L0…CG-L5)** rates. Stable **v0.2.0 = CG-L2** (claim-grounded); alpha **v0.3.0a1 = CG-L3** (evidence-bound; opt-in / default-off; already on PyPI), with the stable channel remaining CG-L2. The gate is the claim-governance layer of the 5-layer governance stack; `phionyx-mcp-server` (v0.1.0) is the outward MCP trust boundary.
 - **Standard** — `phionyx-evaluation-standard` (released **v0.1.1 / v0.2.0**; CG-L0…CG-L5 is its **v0.3 draft** layer): the vendor-neutral spec that defines the L0-L3 (evaluation maturity), D0-D3 (determinism) and CG-L0…CG-L5 (claim-governance) scales. The CG ladder rates **this gate**, not the engine. See [`phionyx-evaluation-standard`](https://github.com/halvrenofviryel/phionyx-evaluation-standard).
 
