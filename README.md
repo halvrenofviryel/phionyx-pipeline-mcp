@@ -10,23 +10,23 @@ This package gives any MCP-capable host (Claude Desktop, Cursor, Zed, VS Code, J
 
 Phionyx ships three distinct things, each with its own version line. This package is **the gate**:
 
-- **Engine** — `phionyx-core` (latest **v0.7.2**): the deterministic runtime (46-block canonical pipeline, state vector, kill switch, HITL, ethics/safety gates, signed audit chain). It is the reference implementation that scores **L3 + D3** on the Evaluation Standard. It is *not* claim-governance-rated.
-- **Gate** — `phionyx-pipeline-mcp` (**this package**): the inward-facing self-claim gate described here. It is the component the **Claim-Governance ladder (CG-L0…CG-L5)** rates. Stable **v0.2.0 = CG-L2** (claim-grounded); alpha **v0.3.0a1 = CG-L3** (evidence-bound; opt-in / default-off; already on PyPI), with the stable channel remaining CG-L2. The gate is the claim-governance layer of the 5-layer governance stack; `phionyx-mcp-server` (v0.1.0) is the outward MCP trust boundary.
-- **Standard** — `phionyx-evaluation-standard` (released **v0.1.1 / v0.2.0**; CG-L0…CG-L5 is its **v0.3 draft** layer): the vendor-neutral spec that defines the L0-L3 (evaluation maturity), D0-D3 (determinism) and CG-L0…CG-L5 (claim-governance) scales. The CG ladder rates **this gate**, not the engine. See [`phionyx-evaluation-standard`](https://github.com/halvrenofviryel/phionyx-evaluation-standard).
+- **Engine** — `phionyx-core` (latest **v0.8.1**): the deterministic runtime (46-block canonical pipeline, state vector, kill switch, HITL, ethics/safety gates, signed audit chain).
+- **Gate** — `phionyx-pipeline-mcp` (**this package**): the inward-facing self-claim gate described here. It verifies what the agent says about its own work against `git diff` truth and a deterministic gate. Stable **v0.2.0** is claim-grounded; alpha **v0.3.0a1** adds opt-in, default-off evidence binding (already on PyPI). It is the claim-governance layer of the Phionyx governance stack; `phionyx-mcp-server` (v0.1.0) is the outward MCP trust boundary.
+- **Format** — the **AI Runtime Evidence Protocol (AIREP)**: an experimental, vendor-neutral open format for an *AI decision receipt* — one signed, hash-chained, offline-checkable record per AI runtime decision, readable by anyone and tied to no vendor. Phionyx's **Reasoned Governance Envelope (RGE)** is AIREP's reference producer (the first system that emits AIREP records). AIREP is a *proposed* format, not a ratified standard. See [`ai-runtime-evidence-protocol`](https://github.com/halvrenofviryel/ai-runtime-evidence-protocol).
 
-These three version namespaces — engine v0.7.2, gate v0.2.0 / v0.3.0a1, Standard v0.1.1 / v0.2.0 / v0.3-draft — are never cross-attributed.
+These three version lines — engine v0.8.1, gate v0.2.0 / v0.3.0a1, and AIREP v0.1 (experimental) — are never cross-attributed.
 
 ## How it works — three-stage verification
 
 ```
 Stage 1: LLM declaration   →   Stage 2: Repo truth          →   Stage 3: Deterministic gate
-  "I fixed X, tested Y,         git diff parsed; functions       phi + entropy + revision
+  "I fixed X, tested Y,         git diff parsed; functions       evidence + recency + revision
    affected paths a,b,c"        extracted; cross-checked         thresholds → directive
 ```
 
 The gate is deterministic. Stage 1 (the agent's input) is stochastic. Stage 2 — verifying the agent's path declarations against the actual `git diff` — is what narrows the gap.
 
-(These three stages are internal to the gate's verification flow. They are unrelated to the governance-stack layers and to the L0-L3 / D0-D3 / CG-L0…CG-L5 scales of the Evaluation Standard.)
+(These three stages are internal to the gate's verification flow. They are unrelated to the broader Phionyx governance-stack layers.)
 
 ## Where this fits on phionyx.ai
 
@@ -182,9 +182,9 @@ AGPL-3.0-or-later. See [`LICENSE`](LICENSE).
 
 - [phionyx.ai/bounded-authority](https://phionyx.ai/bounded-authority) — entry pillar this package surfaces under
 - [phionyx.ai/evidence](https://phionyx.ai/evidence) — Evidence Matrix: every load-bearing claim paired with a reviewer-runnable command
-- [`phionyx-evaluation-standard`](https://github.com/halvrenofviryel/phionyx-evaluation-standard) — the vendor-neutral spec (released v0.1.1 / v0.2.0; CG-L0…CG-L5 is its v0.3-draft layer) that defines the L0-L3, D0-D3 and CG-L0…CG-L5 scales. The CG ladder rates this gate (stable v0.2.0 = CG-L2; alpha v0.3.0a1 = CG-L3).
+- [`ai-runtime-evidence-protocol`](https://github.com/halvrenofviryel/ai-runtime-evidence-protocol) — AIREP, the experimental vendor-neutral open format for per-decision AI decision receipts (signed, hash-chained, offline-checkable). Phionyx's Reasoned Governance Envelope is its reference producer. A proposed format, not a ratified standard.
 - Project hub: [github.com/halvrenofviryel/phionyx-research](https://github.com/halvrenofviryel/phionyx-research)
-- Engine (PyPI): [`phionyx-core`](https://pypi.org/project/phionyx-core/) — the deterministic runtime (v0.7.2), reference impl scoring L3 + D3 on the Standard; not claim-governance-rated
+- Engine (PyPI): [`phionyx-core`](https://pypi.org/project/phionyx-core/) — the deterministic runtime (v0.8.1)
 - Outward MCP layer: [`phionyx-mcp-server`](https://github.com/halvrenofviryel/phionyx-mcp-server) (v0.1.0) — trust boundary over third-party MCP tool calls
 - Inspect AI bridge: [`phionyx-eval-inspect`](https://github.com/halvrenofviryel/phionyx-eval-inspect) (v0.1.0) — envelope chain → `.eval` log
 - Framework adapters (alpha): [`phionyx-langchain-langgraph`](https://github.com/halvrenofviryel/phionyx-langchain-langgraph) (v0.1.0a1) · [`phionyx-openai-agents`](https://github.com/halvrenofviryel/phionyx-openai-agents) (v0.1.0a1)
