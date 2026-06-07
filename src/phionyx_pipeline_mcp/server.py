@@ -74,7 +74,7 @@ EVIDENCE_WEIGHTS: Dict[str, float] = {
     "none": 0.0,
 }
 
-# ── P1: require_tool directive (CG-L3; L2→L3) ──────────────────────────────────
+# ── P1: require_tool directive (L2→L3) ──────────────────────────────────
 # A factual / external-state claim with NO same-turn externally-bound evidence must not
 # `pass` — the runtime is not ground truth, so it returns `require_tool`: bind the
 # evidence (run the tool) first. Enforcement is opt-in

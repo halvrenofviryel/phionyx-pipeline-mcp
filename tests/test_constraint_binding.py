@@ -1,4 +1,4 @@
-"""CG-L3 behavioural tests for phionyx-pipeline-mcp.
+"""Constraint-binding (require_tool) behavioural tests for phionyx-pipeline-mcp.
 
 Covers the three opt-in / default-off governance capabilities ported from the
 private monorepo gate:
