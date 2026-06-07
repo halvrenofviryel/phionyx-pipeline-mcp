@@ -199,7 +199,7 @@ def _resolve_source(source: str, repo_root: Path, memory_dir: Path | None) -> Pa
     return repo_root / src
 
 
-# ── P2b — per-constraint satisfaction (completes CG-L3: read_but_not_bound caught) ──
+# ── P2b — per-constraint satisfaction (read_but_not_bound caught) ──
 #
 # ledger_freshness() (P2 v0) answers only "is the ledger bound + fresh" — a COARSE
 # signal that can't see whether THIS action satisfies the constraints it touches.
