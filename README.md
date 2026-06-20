@@ -10,11 +10,11 @@ This package gives any MCP-capable host (Claude Desktop, Cursor, Zed, VS Code, J
 
 Phionyx ships three distinct things, each with its own version line. This package is **the gate**:
 
-- **Engine** — `phionyx-core` (latest **v0.8.1**): the deterministic runtime (46-block canonical pipeline, state vector, kill switch, HITL, ethics/safety gates, signed audit chain).
+- **Engine** — `phionyx-core` (latest **v0.9.0**): the deterministic runtime (46-block canonical pipeline, state vector, kill switch, HITL, ethics/safety gates, signed audit chain).
 - **Gate** — `phionyx-pipeline-mcp` (**this package**): the inward-facing self-claim gate described here. It verifies what the agent says about its own work against `git diff` truth and a deterministic gate. **v0.3.0** adds opt-in, default-off evidence binding (the `require_tool` directive + continuity binding) on top of the claim-grounding gate. It is the claim-governance layer of the Phionyx governance stack; `phionyx-mcp-server` (v0.1.0) is the outward MCP trust boundary.
 - **Format** — the **AI Runtime Evidence Protocol (AIREP)**: an experimental, vendor-neutral open format for an *AI decision receipt* — one signed, hash-chained, offline-checkable record per AI runtime decision, readable by anyone and tied to no vendor. Phionyx's **Reasoned Governance Envelope (RGE)** is AIREP's reference producer (the first system that emits AIREP records). AIREP is a *proposed* format, not a ratified standard. See [`ai-runtime-evidence-protocol`](https://github.com/halvrenofviryel/ai-runtime-evidence-protocol).
 
-These three version lines — engine v0.8.1, gate v0.3.0, and AIREP v0.1 (experimental) — are never cross-attributed.
+These three version lines — engine v0.9.0, gate v0.3.0, and AIREP v0.1 (experimental) — are never cross-attributed.
 
 ## How it works — three-stage verification
 
@@ -184,7 +184,7 @@ AGPL-3.0-or-later. See [`LICENSE`](LICENSE).
 - [phionyx.ai/evidence](https://phionyx.ai/evidence) — Evidence Matrix: every load-bearing claim paired with a reviewer-runnable command
 - [`ai-runtime-evidence-protocol`](https://github.com/halvrenofviryel/ai-runtime-evidence-protocol) — AIREP, the experimental vendor-neutral open format for per-decision AI decision receipts (signed, hash-chained, offline-checkable). Phionyx's Reasoned Governance Envelope is its reference producer. A proposed format, not a ratified standard.
 - Project hub: [github.com/halvrenofviryel/phionyx-research](https://github.com/halvrenofviryel/phionyx-research)
-- Engine (PyPI): [`phionyx-core`](https://pypi.org/project/phionyx-core/) — the deterministic runtime (v0.8.1)
+- Engine (PyPI): [`phionyx-core`](https://pypi.org/project/phionyx-core/) — the deterministic runtime (v0.9.0)
 - Outward MCP layer: [`phionyx-mcp-server`](https://github.com/halvrenofviryel/phionyx-mcp-server) (v0.1.0) — trust boundary over third-party MCP tool calls
 - Inspect AI bridge: [`phionyx-eval-inspect`](https://github.com/halvrenofviryel/phionyx-eval-inspect) (v0.1.0) — envelope chain → `.eval` log
 - Framework adapters (alpha): [`phionyx-langchain-langgraph`](https://github.com/halvrenofviryel/phionyx-langchain-langgraph) (v0.1.0a1) · [`phionyx-openai-agents`](https://github.com/halvrenofviryel/phionyx-openai-agents) (v0.1.0a1)
