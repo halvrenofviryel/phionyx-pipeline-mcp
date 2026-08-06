@@ -182,7 +182,7 @@ AGPL-3.0-or-later. See [`LICENSE`](LICENSE).
 
 - [phionyx.ai/bounded-authority](https://phionyx.ai/bounded-authority) — entry pillar this package surfaces under
 - [phionyx.ai/evidence](https://phionyx.ai/evidence) — Evidence Matrix: every load-bearing claim paired with a reviewer-runnable command
-- [`ai-runtime-evidence-protocol`](https://github.com/halvrenofviryel/ai-runtime-evidence-protocol) — AIREP, the experimental vendor-neutral open format for per-decision AI decision receipts (signed, hash-chained, offline-checkable). Phionyx's Reasoned Governance Envelope is its reference producer. A proposed format, not a ratified standard.
+- [`ai-runtime-evidence-protocol`](https://github.com/halvrenofviryel/ai-runtime-evidence-protocol) — AIREP, the experimental vendor-neutral open format for per-decision AI decision receipts (signed, hash-chained, offline-checkable). Phionyx's Reasoned Governance Envelope is its developed alongside AIREP; a conformant projection between the two is **not implemented** (measured 2026-08-06: AIREP's own reference verifier rejects an RGE envelope handed to it directly). A proposed format, not a ratified standard.
 - Project hub: [github.com/halvrenofviryel/phionyx-research](https://github.com/halvrenofviryel/phionyx-research)
 - Engine (PyPI): [`phionyx-core`](https://pypi.org/project/phionyx-core/) — the deterministic runtime (v0.9.0)
 - Outward MCP layer: [`phionyx-mcp-server`](https://github.com/halvrenofviryel/phionyx-mcp-server) (v0.2.1) — trust boundary over third-party MCP tool calls
