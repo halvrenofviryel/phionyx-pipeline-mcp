@@ -38,7 +38,7 @@ This package is the **inward-facing** layer: it gates what the agent says about 
 
 A companion package, [`phionyx-mcp-server`](https://github.com/halvrenofviryel/phionyx-mcp-server) (v0.2.1), is the **outward-facing** layer: it sees the host calling a third-party MCP server and signs evidence of that call (descriptor hash, drift detection, audit chain).
 
-When both packages are installed and registered with the same Claude Code host, they agree on a single `trace_id` per session via `PHIONYX_TRACE_ID` (with `~/.phionyx/active_trace` file fallback). One conversation = one trace = end-to-end view of every third-party tool call AND every agent self-claim gate decision.
+When both packages are installed and registered with the same Claude Code host, they agree on a single `trace_id` per session via `PHIONYX_TRACE_ID` (with `~/.phionyx/active_trace` file fallback). One conversation = one trace = a joined view of the third-party tool calls and agent self-claim gate decisions recorded in that session.
 
 `phionyx_session_report` (this package) surfaces the server-MCP envelope chain head + validity inline, so a reviewer can see both layers in one JSON.
 
