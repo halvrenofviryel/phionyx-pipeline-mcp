@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phionyx-pipeline-mcp"
-version = "0.3.0"
+version = "0.3.1"
 description = "Phionyx self-governance gate for Claude Code — three-layer verification (LLM declaration → git diff truth → deterministic gate) over the agent's own 'fixed / tested / changed' claims. v0.3.0 adds opt-in evidence binding: the require_tool directive (a factual claim without same-turn evidence must bind a tool first) and continuity binding (catches 'read-but-not-bound'). Both default-OFF / non-regressive; detector calibration is not yet validated."
 readme = "README.md"
 requires-python = ">=3.10"

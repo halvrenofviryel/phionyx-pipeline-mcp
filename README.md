@@ -14,7 +14,7 @@ Phionyx ships three distinct things, each with its own version line. This packag
 - **Gate** — `phionyx-pipeline-mcp` (**this package**): the inward-facing self-claim gate described here. It verifies what the agent says about its own work against `git diff` truth and a deterministic gate. **v0.3.0** adds opt-in, default-off evidence binding (the `require_tool` directive + continuity binding) on top of the claim-grounding gate. It is the claim-governance layer of the Phionyx governance stack; `phionyx-mcp-server` (v0.2.1) is the outward MCP trust boundary.
 - **Format** — the **AI Runtime Evidence Protocol (AIREP)**: an experimental, vendor-neutral open format for an *AI decision receipt* — one signed, hash-chained, offline-checkable record per AI runtime decision, readable by anyone and tied to no vendor. Phionyx's **Reasoned Governance Envelope (RGE)** is developed alongside AIREP; a conformant projection between the two is **not implemented** (measured 2026-08-06: AIREP's own reference verifier rejects an RGE envelope handed to it directly). RGE producer (developed alongside AIREP; a conformant projection between the two is **not implemented** (measured 2026-08-06: AIREP's own reference verifier rejects an RGE envelope handed to it directly)). AIREP is a *proposed* format, not a ratified standard. See [`ai-runtime-evidence-protocol`](https://github.com/halvrenofviryel/ai-runtime-evidence-protocol).
 
-These three version lines — engine v0.9.0, gate v0.3.0, and AIREP v0.1 (experimental) — are never cross-attributed.
+These three version lines — engine v0.9.1, gate v0.3.1, and AIREP v0.1 (experimental) — are never cross-attributed.
 
 ## How it works — three-stage verification
 
