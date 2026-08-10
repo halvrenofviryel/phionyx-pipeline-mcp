@@ -323,6 +323,8 @@ def _persist_state(tool_name: str, result: dict) -> None:
         "w_final": result.get("confidence_fusion", {}).get("w_final", None),
         "trust": result.get("trust_evaluation", {}).get("direct_trust", None),
         "integrity": result.get("audit", {}).get("integrity_score", None),
+        "claim_authority": result.get("authority", {}).get("claim_authority"),
+        "is_acceptance_evidence": result.get("authority", {}).get("is_acceptance_evidence"),
     }
 
     session_file = _telemetry_dir() / f"session_{_session_id}.json"
@@ -1062,6 +1064,36 @@ def _causal_trace_impl(
     }
 
 
+_ACCEPTANCE_AUTHORITIES = {"independent_verification"}
+
+
+def _authority_block(claim_authority: str | None) -> dict[str, Any]:
+    """Tag the DECLARED authority of the claim being gated (WP-16 / MG-5 authority separation).
+
+    Fail-safe: anything other than the exact literal ``independent_verification`` normalizes to
+    ``implementer_self_claim`` — an unknown/typo authority is never promoted to independent. The
+    gate NEVER emits acceptance evidence: it is a self-governance check, not the authorized
+    acceptance stage. "A statement by the implementing agent is never acceptance evidence"
+    (constitution §4 / MG-5), so a ``pass`` here is developer evidence, never ACCEPTED.
+    """
+    declared = claim_authority if claim_authority in _ACCEPTANCE_AUTHORITIES else "implementer_self_claim"
+    is_self = declared == "implementer_self_claim"
+    note = (
+        "This gate verdict is self-governance/developer evidence, never ACCEPTED. "
+        + ("An implementer self-claim can never be acceptance evidence (MG-5); "
+           if is_self else
+           "A claim declared 'independent_verification' is recorded as declared, but ACCEPTED is "
+           "assigned only by the authorized independent acceptance stage, not this gate; ")
+        + "a `pass` here does not accept the work."
+    )
+    return {
+        "claim_authority": declared,
+        "is_self_claim": is_self,
+        "is_acceptance_evidence": False,
+        "note": note,
+    }
+
+
 def _response_gate_impl(
     action_type: str,
     confidence: float,
@@ -1070,6 +1102,7 @@ def _response_gate_impl(
     affects_user_facing: bool,
     artifact_references: str = "",
     artifact_paths_read: str = "",
+    claim_authority: str = "implementer_self_claim",
 ) -> dict[str, Any]:
     """Response revision gate with 9-block pipeline. Blocks 3, 16, 23, 37, 38, 39, 41, 44.
 
@@ -1255,6 +1288,7 @@ def _response_gate_impl(
         "physics": _physics_snapshot(phi_result),
         "trace_id": chain["trace_id"],
         "mcp_envelope_chain_head": chain["head_hash"],
+        "authority": _authority_block(claim_authority),
     }
 
 
@@ -1267,6 +1301,18 @@ def _session_report_impl() -> dict[str, Any]:
         by_directive[c["directive"]] = by_directive.get(c["directive"], 0) + 1
         et = c.get("evidence_type", "unknown")
         by_evidence[et] = by_evidence.get(et, 0) + 1
+
+    # WP-16: authority-role rollup from the recorded timeline (self-claims vs declared-independent).
+    authority_counts: dict[str, int] = {}
+    try:
+        sf = _telemetry_dir() / f"session_{_session_id}.json"
+        if sf.exists():
+            for e in json.loads(sf.read_text()).get("timeline", []):
+                a = e.get("claim_authority")
+                if a:
+                    authority_counts[a] = authority_counts.get(a, 0) + 1
+    except (OSError, json.JSONDecodeError):
+        pass
 
     drift = _drift_tracker.get_report()
     phi_result = _compute_phi(max(0.001, time.time() - _last_call_time))
@@ -1299,6 +1345,12 @@ def _session_report_impl() -> dict[str, Any]:
             sum(c.get("integrity", 0) for c in _claim_history) / max(total, 1), 4
         ),
         "current_physics": _physics_snapshot(phi_result),
+        "authority": {
+            "counts": authority_counts,
+            "acceptance_evidence_emitted": False,
+            "note": "The gate never emits acceptance evidence (MG-5): an implementer self-claim "
+                    "verdict is never ACCEPTED — only an authorized independent acceptance stage assigns it.",
+        },
         "claims": [
             {
                 "claim": c["claim"][:80],
@@ -1452,6 +1504,7 @@ def main() -> None:
         affects_user_facing: bool = False,
         artifact_references: str = "",
         artifact_paths_read: str = "",
+        claim_authority: str = "implementer_self_claim",
     ) -> dict[str, Any]:
         """Response revision gate with action-type-specific thresholds. Call before committing.
 
@@ -1488,6 +1541,10 @@ def main() -> None:
             artifact_paths_read: Comma-separated artifact identifiers actually opened this
                 turn (Read tool results, gh issue view output, WebFetch URLs). Only
                 meaningful when action_type in {'ask_question', 'make_claim'}.
+            claim_authority: `implementer_self_claim` (default) | `independent_verification`. The
+                authority the claim is made under. A self-claim verdict is NEVER acceptance
+                evidence (MG-5); the gate records the declared authority and never emits ACCEPTED.
+                Anything other than the exact `independent_verification` normalizes to a self-claim.
         """
         result = _response_gate_impl(
             action_type,
@@ -1497,6 +1554,7 @@ def main() -> None:
             affects_user_facing,
             artifact_references,
             artifact_paths_read,
+            claim_authority,
         )
         _persist_state("phionyx_response_gate", result)
         return result
