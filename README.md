@@ -10,8 +10,8 @@ This package gives any MCP-capable host (Claude Desktop, Cursor, Zed, VS Code, J
 
 Phionyx ships three distinct things, each with its own version line. This package is **the gate**:
 
-- **Engine** — `phionyx-core` (latest **v0.9.1**): the deterministic runtime (46-block canonical pipeline, state vector, kill switch, HITL, ethics/safety gates, audit-record contracts — the signed chain is demonstrated at the MCP boundary today).
-- **Gate** — `phionyx-pipeline-mcp` (**this package**): the inward-facing self-claim gate described here. It verifies what the agent says about its own work against `git diff` truth and a deterministic gate. **v0.3.1** adds opt-in, default-off evidence binding (the `require_tool` directive + continuity binding) on top of the claim-grounding gate. It is the claim-governance layer of the Phionyx governance stack; `phionyx-mcp-server` (v0.2.2) is the outward MCP trust boundary.
+- **Engine** — `phionyx-core` (current release on PyPI): the deterministic runtime (46-block canonical pipeline, state vector, kill switch, HITL, ethics/safety gates, audit-record contracts — the signed chain is demonstrated at the MCP boundary today).
+- **Gate** — `phionyx-pipeline-mcp` (**this package**): the inward-facing self-claim gate described here. It verifies what the agent says about its own work against `git diff` truth and a deterministic gate. **v0.3.1** adds opt-in, default-off evidence binding (the `require_tool` directive + continuity binding) on top of the claim-grounding gate. It is the claim-governance layer of the Phionyx governance stack; `phionyx-mcp-server` (current release on PyPI) is the outward MCP trust boundary.
 - **Format** — the **AI Runtime Evidence Protocol (AIREP)**: an experimental, vendor-neutral open format for an *AI decision receipt* — one signed, hash-chained, offline-checkable record per AI runtime decision, readable by anyone and tied to no vendor. Phionyx's **Reasoned Governance Envelope (RGE)** is developed alongside AIREP; a conformant projection between the two is **not implemented** (measured 2026-08-06: AIREP's own reference verifier rejects an RGE envelope handed to it directly). RGE producer (developed alongside AIREP; a conformant projection between the two is **not implemented** (measured 2026-08-06: AIREP's own reference verifier rejects an RGE envelope handed to it directly)). AIREP is a *proposed* format, not a ratified standard. See [`ai-runtime-evidence-protocol`](https://github.com/halvrenofviryel/ai-runtime-evidence-protocol).
 
 These three version lines — engine v0.9.1, gate v0.3.1, and AIREP v0.1 (experimental) — are never cross-attributed.
@@ -36,7 +36,7 @@ This package surfaces under [**phionyx.ai/bounded-authority**](https://phionyx.a
 
 This package is the **inward-facing** layer: it gates what the agent says about its own work.
 
-A companion package, [`phionyx-mcp-server`](https://github.com/halvrenofviryel/phionyx-mcp-server) (v0.2.2), is the **outward-facing** layer: it sees the host calling a third-party MCP server and signs evidence of that call (descriptor hash, drift detection, audit chain).
+A companion package, [`phionyx-mcp-server`](https://github.com/halvrenofviryel/phionyx-mcp-server) (current release on PyPI), is the **outward-facing** layer: it sees the host calling a third-party MCP server and signs evidence of that call (descriptor hash, drift detection, audit chain).
 
 When both packages are installed and registered with the same Claude Code host, they agree on a single `trace_id` per session via `PHIONYX_TRACE_ID` (with `~/.phionyx/active_trace` file fallback). One conversation = one trace = a joined view of the third-party tool calls and agent self-claim gate decisions recorded in that session.
 
@@ -184,7 +184,7 @@ AGPL-3.0-or-later. See [`LICENSE`](LICENSE).
 - [phionyx.ai/evidence](https://phionyx.ai/evidence) — Evidence Matrix: every load-bearing claim paired with a reviewer-runnable command
 - [`ai-runtime-evidence-protocol`](https://github.com/halvrenofviryel/ai-runtime-evidence-protocol) — AIREP, the experimental vendor-neutral open format for per-decision AI decision receipts (signed, hash-chained, offline-checkable). Phionyx's Reasoned Governance Envelope is its developed alongside AIREP; a conformant projection between the two is **not implemented** (measured 2026-08-06: AIREP's own reference verifier rejects an RGE envelope handed to it directly). A proposed format, not a ratified standard.
 - Project hub: [github.com/halvrenofviryel/phionyx-research](https://github.com/halvrenofviryel/phionyx-research)
-- Engine (PyPI): [`phionyx-core`](https://pypi.org/project/phionyx-core/) — the deterministic runtime (v0.9.1)
-- Outward MCP layer: [`phionyx-mcp-server`](https://github.com/halvrenofviryel/phionyx-mcp-server) (v0.2.2) — trust boundary over third-party MCP tool calls
-- Inspect AI bridge: [`phionyx-eval-inspect`](https://github.com/halvrenofviryel/phionyx-eval-inspect) (v0.1.0) — envelope chain → `.eval` log
-- Framework adapters (alpha): [`phionyx-langchain-langgraph`](https://github.com/halvrenofviryel/phionyx-langchain-langgraph) (v0.1.0a3) · [`phionyx-openai-agents`](https://github.com/halvrenofviryel/phionyx-openai-agents) (v0.1.0a3)
+- Engine (PyPI): [`phionyx-core`](https://pypi.org/project/phionyx-core/) — the deterministic runtime (current release on PyPI)
+- Outward MCP layer: [`phionyx-mcp-server`](https://github.com/halvrenofviryel/phionyx-mcp-server) — trust boundary over third-party MCP tool calls
+- Inspect AI bridge: [`phionyx-eval-inspect`](https://github.com/halvrenofviryel/phionyx-eval-inspect) — envelope chain → `.eval` log
+- Framework adapters (alpha): [`phionyx-langchain-langgraph`](https://github.com/halvrenofviryel/phionyx-langchain-langgraph) · [`phionyx-openai-agents`](https://github.com/halvrenofviryel/phionyx-openai-agents)
