@@ -1412,7 +1412,7 @@ def main() -> None:
     try:
         from mcp.server.fastmcp import FastMCP
     except ImportError:
-        sys.stderr.write("Install MCP SDK: pip install mcp\n")
+        sys.stderr.write("MCP 1.x FastMCP is required. Install: pip install 'mcp>=1.27.0,<2'\n")
         sys.exit(1)
 
     mcp = FastMCP("phionyx-pipeline", json_response=True)

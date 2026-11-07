@@ -188,3 +188,9 @@ AGPL-3.0-or-later. See [`LICENSE`](LICENSE).
 - Outward MCP layer: [`phionyx-mcp-server`](https://github.com/halvrenofviryel/phionyx-mcp-server) — trust boundary over third-party MCP tool calls
 - Inspect AI bridge: [`phionyx-eval-inspect`](https://github.com/halvrenofviryel/phionyx-eval-inspect) — envelope chain → `.eval` log
 - Framework adapters (alpha): [`phionyx-langchain-langgraph`](https://github.com/halvrenofviryel/phionyx-langchain-langgraph) · [`phionyx-openai-agents`](https://github.com/halvrenofviryel/phionyx-openai-agents)
+## MCP compatibility (0.3.2 candidate)
+
+This entry point uses `mcp.server.fastmcp` from MCP 1.x. Installation is now
+bounded to `mcp>=1.27.0,<2`; MCP 2.x is not supported by this entry point.
+The upper bound prevents a successful dependency install followed by a startup
+import failure. It does not claim compatibility with every future MCP 1.x release.
